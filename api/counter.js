@@ -1,14 +1,9 @@
-// This is the final, correct code for Vercel's Redis Marketplace (Upstash).
 import { Redis } from '@upstash/redis';
 
-// This automatically uses the secret keys Vercel provides after connecting the Redis integration.
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+// This now looks for the single REDIS_URL key that Vercel provides.
+const redis = Redis.fromEnv();
 
 export default async function handler(request, response) {
-  // Allow requests from any origin
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Content-Type', 'application/json');
   
@@ -28,9 +23,8 @@ export default async function handler(request, response) {
     else { // Default action is 'get'
       let value = await redis.get(DB_KEY);
       
-      // If the counter doesn't exist yet, initialize it
       if (value === null) {
-        value = 11350; // Your starting number
+        value = 11350;
         await redis.set(DB_KEY, value);
       }
       
