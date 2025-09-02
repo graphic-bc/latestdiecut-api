@@ -1,12 +1,16 @@
-// This is a Vercel Serverless Function.
-// It connects to Vercel's built-in Key-Value database.
+// This is the final, correct code for Vercel's Redis Marketplace (Upstash).
+import { Redis } from '@upstash/redis';
 
-import { kv } from '@vercel/kv';
+// This automatically uses the secret keys Vercel provides after connecting the Redis integration.
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
 
 export default async function handler(request, response) {
-  // Allow requests from any origin so CodePen can talk to it
+  // Allow requests from any origin
   response.setHeader('Access-Control-Allow-Origin', '*');
-  response.setHeader('Content-Type', 'application/json'); // Good practice to set content type
+  response.setHeader('Content-Type', 'application/json');
   
   const { searchParams } = new URL(request.url, `https://_`);
   const action = searchParams.get('action');
@@ -14,20 +18,20 @@ export default async function handler(request, response) {
 
   try {
     if (action === 'increment') {
-      const newValue = await kv.incr(DB_KEY);
+      const newValue = await redis.incr(DB_KEY);
       return response.status(200).json({ value: newValue });
     } 
     else if (action === 'decrement') {
-      const newValue = await kv.decr(DB_KEY);
+      const newValue = await redis.decr(DB_KEY);
       return response.status(200).json({ value: newValue });
     }
     else { // Default action is 'get'
-      let value = await kv.get(DB_KEY);
+      let value = await redis.get(DB_KEY);
       
       // If the counter doesn't exist yet, initialize it
       if (value === null) {
         value = 11350; // Your starting number
-        await kv.set(DB_KEY, value);
+        await redis.set(DB_KEY, value);
       }
       
       return response.status(200).json({ value: value });
