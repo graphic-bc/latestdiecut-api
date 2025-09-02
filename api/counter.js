@@ -1,12 +1,10 @@
-import { Redis } from '@upstash/redis';
+// This is the final, correct code using the industry-standard 'ioredis' library,
+// which correctly understands the REDIS_URL provided by Vercel.
+import Redis from 'ioredis';
 
-// THIS IS THE FIX:
-// Instead of using the 'magic' fromEnv(), we are now explicitly
-// telling the Redis client where to find the URL. We are reading
-// the 'REDIS_URL' environment variable that YOU set in the Vercel dashboard.
-const redis = new Redis({
-  url: process.env.REDIS_URL,
-});
+// This is the core fix. ioredis is built to parse the REDIS_URL format correctly.
+// It will automatically connect using the key you set in the Vercel dashboard.
+const redis = new Redis(process.env.REDIS_URL);
 
 export default async function handler(request, response) {
   // Allow requests from any origin
@@ -38,7 +36,7 @@ export default async function handler(request, response) {
       return response.status(200).json({ value: value });
     }
   } catch (error) {
-      console.error(error); // This will now log more detailed errors if they happen
+      console.error(error);
       return response.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 }
