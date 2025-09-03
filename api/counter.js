@@ -29,7 +29,7 @@ export default async function handler(request, response) {
       
       // If the counter doesn't exist yet, initialize it
       if (value === null) {
-        value = 11350; // Your starting number
+        value = 11380; // Your starting number
         await redis.set(DB_KEY, value);
       }
       
