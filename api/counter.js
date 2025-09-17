@@ -13,27 +13,49 @@ export default async function handler(request, response) {
   
   const { searchParams } = new URL(request.url, `https://_`);
   const action = searchParams.get('action');
-  const DB_KEY = 'counterValue';
+  
+  // Define our database keys
+  const COUNTER_KEY = 'counterValue';
+  const TIMESTAMP_KEY = 'counterTimestamp';
 
   try {
-    if (action === 'increment') {
-      const newValue = await redis.incr(DB_KEY);
-      return response.status(200).json({ value: newValue });
-    } 
-    else if (action === 'decrement') {
-      const newValue = await redis.decr(DB_KEY);
-      return response.status(200).json({ value: newValue });
-    }
-    else { // Default action is 'get'
-      let value = await redis.get(DB_KEY);
+    const nowISO = new Date().toISOString(); // Get the current time in a standard format
+
+    if (action === 'increment' || action === 'decrement') {
+      // Use a Redis transaction to update both value and timestamp together
+      const transaction = redis.multi();
       
-      // If the counter doesn't exist yet, initialize it
-      if (value === null) {
-        value = 11380; // Your starting number
-        await redis.set(DB_KEY, value);
+      if (action === 'increment') {
+        transaction.incr(COUNTER_KEY);
+      } else {
+        transaction.decr(COUNTER_KEY);
       }
       
-      return response.status(200).json({ value: value });
+      transaction.set(TIMESTAMP_KEY, nowISO);
+      
+      const results = await transaction.exec();
+      
+      // results is an array of results for each command, e.g., [[null, 11381], [null, 'OK']]
+      const newValue = results[0][1];
+      
+      return response.status(200).json({ value: newValue, lastUpdated: nowISO });
+    } 
+    else { // Default action is 'get'
+      // Use MGET to fetch both keys at once for efficiency
+      let [value, lastUpdated] = await redis.mget(COUNTER_KEY, TIMESTAMP_KEY);
+      
+      // If the counter doesn't exist yet, initialize both keys
+      if (value === null) {
+        value = 11380; // Your starting number
+        lastUpdated = new Date().toISOString();
+        // Use a transaction to set both initial values
+        await redis.multi()
+          .set(COUNTER_KEY, value)
+          .set(TIMESTAMP_KEY, lastUpdated)
+          .exec();
+      }
+      
+      return response.status(200).json({ value: Number(value), lastUpdated: lastUpdated });
     }
   } catch (error) {
       console.error(error);
